@@ -4,7 +4,8 @@
 local WhitelistIDs = {
     9407468530,
     4407199546,
-    8030191021, -- İzinli ID'leri buraya alt alta eklemeye devam edebilirsin
+    8030191021,
+    7768877199 ,   -- İzinli ID'leri buraya alt alta eklemeye devam edebilirsin
 }
 
 local Players = game:GetService("Players")
