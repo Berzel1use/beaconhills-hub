@@ -261,7 +261,7 @@ CreateTabButton("Players", "Players")
 CreateTabButton("Profile", "Profile")
 CreateTabButton("Settings", "Settings")
 
-SwitchTab("Combat")
+SwitchTab("Profile")
 
 -- Toggle Oluşturucu
 local function CreateLuxuryToggle(tabName, titleText, subText, defaultState, callback)
