@@ -4,21 +4,25 @@
 local WhitelistIDs = {
     9407468530,
     4407199546,
-    8030191021, -- Örnek olarak verdiğin ID (Bunu değiştirebilir veya çoğaltabilirsin)
-    -- Başka ID eklemek için: 123456789, şeklinde alt alta ekleyebilirsin
+    8030191021, -- İzinli ID'leri buraya alt alta eklemeye devam edebilirsin
 }
 
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+-- Oyuncunun oyuna tam olarak yüklenmesini garantiye alıyoruz:
+local LocalPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
 
 local function isWhitelisted(id)
-    for _, whitelistedID in ipairs(WhitelistIDs) do
-        if whitelistedID == id then
+    -- ipairs yerine pairs, sayı/yazı formatı çakışmasına karşı tostring() kullanıyoruz
+    for _, whitelistedID in pairs(WhitelistIDs) do
+        if tostring(whitelistedID) == tostring(id) then
             return true
         end
     end
     return false
 end
+
+-- LocalPlayer herhangi bir sebepten yoksa scripti durdur
+if not LocalPlayer then return end
 
 -- Eğer oyuncu listede yoksa scripti tamamen durdur ve oyundan at (Kick)
 if not isWhitelisted(LocalPlayer.UserId) then
