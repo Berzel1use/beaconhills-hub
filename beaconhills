@@ -2,7 +2,9 @@
 -- WHITELIST KONTROL SİSTEMİ
 -- ==========================================
 local WhitelistIDs = {
-    9407468530, -- Örnek olarak verdiğin ID (Bunu değiştirebilir veya çoğaltabilirsin)
+    9407468530,
+    4407199546,
+    8030191021, -- Örnek olarak verdiğin ID (Bunu değiştirebilir veya çoğaltabilirsin)
     -- Başka ID eklemek için: 123456789, şeklinde alt alta ekleyebilirsin
 }
 
