@@ -1,0 +1,1076 @@
+-- ==========================================
+-- WHITELIST KONTROL SİSTEMİ
+-- ==========================================
+local WhitelistIDs = {
+    9407468530, -- Örnek olarak verdiğin ID (Bunu değiştirebilir veya çoğaltabilirsin)
+    -- Başka ID eklemek için: 123456789, şeklinde alt alta ekleyebilirsin
+}
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function isWhitelisted(id)
+    for _, whitelistedID in ipairs(WhitelistIDs) do
+        if whitelistedID == id then
+            return true
+        end
+    end
+    return false
+end
+
+-- Eğer oyuncu listede yoksa scripti tamamen durdur ve oyundan at (Kick)
+if not isWhitelisted(LocalPlayer.UserId) then
+    LocalPlayer:Kick("Bu scripti kullanmak için Whitelist'te (izinli listede) değilsin!")
+    return
+end
+
+-- ==========================================
+-- SERVİSLER VE ANA KODLAR
+-- ==========================================
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local Mouse = LocalPlayer:GetMouse()
+local Camera = Workspace.CurrentCamera
+
+-- Remote Event (B Tuşu: HeartRip)
+local EventB = nil
+pcall(function()
+    EventB = ReplicatedStorage.Abilities.Werewolf.PC.HeartRip
+end)
+
+-- Punch Remote Event
+local PunchEvent = nil
+pcall(function()
+    PunchEvent = ReplicatedStorage:WaitForChild("iidqkS")
+        :WaitForChild("asd")
+        :WaitForChild("abcd")
+        :WaitForChild("Siinommy")
+        :WaitForChild("YmrkPnchFaustTW")
+end)
+
+-- Global Variables
+local heartRipB_Enabled = false
+local esp_Enabled = false
+local autoPunch_Enabled = false
+local autoPunch2x_Enabled = false
+local heartRipProtect_Enabled = false
+local fov_Enabled = false
+local customFovValue = 90
+local infiniteEnergy_Enabled = false
+
+-- Oyuncu Durumları Tablosu ("Enemy", "Friend", "None")
+local playerStatuses = {}
+
+-- ÖNCEKİ ÇALIŞAN SCRİPTLERİ VE TUŞLARI TEMİZLEME
+if getgenv().PotassiumConnections then
+    for _, conn in pairs(getgenv().PotassiumConnections) do
+        if typeof(conn) == "RBXScriptConnection" then
+            conn:Disconnect()
+        end
+    end
+end
+getgenv().PotassiumConnections = {}
+
+local function AddConnection(conn)
+    table.insert(getgenv().PotassiumConnections, conn)
+end
+
+-- Eski GUI ve ESP Temizliği
+local GUI_NAME = "TeenWolfPackHub"
+if CoreGui:FindFirstChild(GUI_NAME) then
+    CoreGui[GUI_NAME]:Destroy()
+end
+if CoreGui:FindFirstChild("Wolf_ESP_Folder") then
+    CoreGui["Wolf_ESP_Folder"]:Destroy()
+end
+
+-- ESP Klasörü
+local EspFolder = Instance.new("Folder")
+EspFolder.Name = "Wolf_ESP_Folder"
+EspFolder.Parent = CoreGui
+
+-- 1. ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = GUI_NAME
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- 2. Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 520, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(22, 12, 12)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 10, 16))
+}
+UIGradient.Rotation = 45
+UIGradient.Parent = MainFrame
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(200, 35, 35)
+UIStroke.Thickness = 1.5
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.Parent = MainFrame
+
+-- Topbar
+local Topbar = Instance.new("Frame")
+Topbar.Name = "Topbar"
+Topbar.Size = UDim2.new(1, 0, 0, 45)
+Topbar.BackgroundColor3 = Color3.fromRGB(8, 10, 14)
+Topbar.BackgroundTransparency = 0.2
+Topbar.BorderSizePixel = 0
+Topbar.Parent = MainFrame
+
+local TopbarTitle = Instance.new("TextLabel")
+TopbarTitle.Size = UDim2.new(1, -20, 1, 0)
+TopbarTitle.Position = UDim2.new(0, 15, 0, 0)
+TopbarTitle.BackgroundTransparency = 1
+TopbarTitle.Text = "BEACON HILLS  |  PACK HUB (WHITELISTED)"
+TopbarTitle.TextColor3 = Color3.fromRGB(240, 240, 240)
+TopbarTitle.TextXAlignment = Enum.TextXAlignment.Left
+TopbarTitle.Font = Enum.Font.GothamBold
+TopbarTitle.TextSize = 13
+TopbarTitle.Parent = Topbar
+
+local TitleGradient = Instance.new("UIGradient")
+TitleGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 60, 60)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 180, 200))
+}
+TitleGradient.Parent = TopbarTitle
+
+-- Sidebar
+local Sidebar = Instance.new("Frame")
+Sidebar.Name = "Sidebar"
+Sidebar.Size = UDim2.new(0, 130, 1, -55)
+Sidebar.Position = UDim2.new(0, 10, 0, 50)
+Sidebar.BackgroundColor3 = Color3.fromRGB(16, 18, 25)
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = MainFrame
+
+local SidebarCorner = Instance.new("UICorner")
+SidebarCorner.CornerRadius = UDim.new(0, 8)
+SidebarCorner.Parent = Sidebar
+
+local SidebarLayout = Instance.new("UIListLayout")
+SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SidebarLayout.Padding = UDim.new(0, 6)
+SidebarLayout.Parent = Sidebar
+
+local SidebarPadding = Instance.new("UIPadding")
+SidebarPadding.PaddingTop = UDim.new(0, 8)
+SidebarPadding.PaddingLeft = UDim.new(0, 8)
+SidebarPadding.PaddingRight = UDim.new(0, 8)
+SidebarPadding.Parent = Sidebar
+
+-- Containers Holder
+local ContentHolder = Instance.new("Frame")
+ContentHolder.Name = "ContentHolder"
+ContentHolder.Size = UDim2.new(1, -155, 1, -55)
+ContentHolder.Position = UDim2.new(0, 145, 0, 50)
+ContentHolder.BackgroundTransparency = 1
+ContentHolder.Parent = MainFrame
+
+local tabs = {}
+local tabButtons = {}
+local activeTabName = nil
+
+local function CreateTabContent(name)
+    local tabFrame = Instance.new("ScrollingFrame")
+    tabFrame.Name = name .. "Tab"
+    tabFrame.Size = UDim2.new(1, 0, 1, 0)
+    tabFrame.BackgroundTransparency = 1
+    tabFrame.BorderSizePixel = 0
+    tabFrame.ScrollBarThickness = 3
+    tabFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    tabFrame.Visible = false
+    tabFrame.Parent = ContentHolder
+
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = tabFrame
+
+    tabs[name] = tabFrame
+    return tabFrame
+end
+
+local function SwitchTab(name)
+    for tName, frame in pairs(tabs) do
+        frame.Visible = (tName == name)
+    end
+    for tName, btn in pairs(tabButtons) do
+        if tName == name then
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(200, 35, 35)}):Play()
+        else
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(22, 25, 35)}):Play()
+        end
+    end
+    activeTabName = name
+end
+
+local function CreateTabButton(name, displayName)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 36)
+    btn.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
+    btn.BorderSizePixel = 0
+    btn.Text = displayName
+    btn.TextColor3 = Color3.fromRGB(240, 240, 240)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.Parent = Sidebar
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    tabButtons[name] = btn
+    CreateTabContent(name)
+
+    btn.MouseButton1Click:Connect(function()
+        SwitchTab(name)
+    end)
+end
+
+CreateTabButton("Combat", "Combat")
+CreateTabButton("Visuals", "Visuals")
+CreateTabButton("Players", "Players")
+CreateTabButton("Profile", "Profile")
+CreateTabButton("Settings", "Settings")
+
+SwitchTab("Combat")
+
+-- Toggle Oluşturucu
+local function CreateLuxuryToggle(tabName, titleText, subText, defaultState, callback)
+    local parentTab = tabs[tabName]
+    if not parentTab then return end
+
+    local ToggleCard = Instance.new("Frame")
+    ToggleCard.Size = UDim2.new(1, -6, 0, 56)
+    ToggleCard.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+    ToggleCard.BorderSizePixel = 0
+    ToggleCard.Parent = parentTab
+
+    local CardCorner = Instance.new("UICorner")
+    CardCorner.CornerRadius = UDim.new(0, 8)
+    CardCorner.Parent = ToggleCard
+
+    local CardStroke = Instance.new("UIStroke")
+    CardStroke.Color = Color3.fromRGB(45, 45, 60)
+    CardStroke.Thickness = 1
+    CardStroke.Parent = ToggleCard
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -65, 0, 20)
+    Label.Position = UDim2.new(0, 10, 0, 8)
+    Label.BackgroundTransparency = 1
+    Label.Text = titleText
+    Label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 12
+    Label.Parent = ToggleCard
+
+    local SubLabel = Instance.new("TextLabel")
+    SubLabel.Size = UDim2.new(1, -65, 0, 16)
+    SubLabel.Position = UDim2.new(0, 10, 0, 28)
+    SubLabel.BackgroundTransparency = 1
+    SubLabel.Text = subText
+    SubLabel.TextColor3 = Color3.fromRGB(140, 140, 160)
+    SubLabel.TextXAlignment = Enum.TextXAlignment.Left
+    SubLabel.Font = Enum.Font.Gotham
+    SubLabel.TextSize = 10
+    SubLabel.Parent = ToggleCard
+
+    local Switch = Instance.new("Frame")
+    Switch.Size = UDim2.new(0, 40, 0, 22)
+    Switch.Position = UDim2.new(1, -50, 0.5, -11)
+    Switch.BackgroundColor3 = defaultState and Color3.fromRGB(200, 35, 35) or Color3.fromRGB(45, 45, 55)
+    Switch.BorderSizePixel = 0
+    Switch.Parent = ToggleCard
+
+    local SwitchCorner = Instance.new("UICorner")
+    SwitchCorner.CornerRadius = UDim.new(1, 0)
+    SwitchCorner.Parent = Switch
+
+    local Knob = Instance.new("Frame")
+    Knob.Size = UDim2.new(0, 16, 0, 16)
+    Knob.Position = defaultState and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
+    Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Knob.BorderSizePixel = 0
+    Knob.Parent = Switch
+
+    local KnobCorner = Instance.new("UICorner")
+    KnobCorner.CornerRadius = UDim.new(1, 0)
+    KnobCorner.Parent = Knob
+
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, 0, 1, 0)
+    Button.BackgroundTransparency = 1
+    Button.Text = ""
+    Button.Parent = ToggleCard
+
+    local state = defaultState
+    Button.MouseButton1Click:Connect(function()
+        state = not state
+        local targetColor = state and Color3.fromRGB(200, 35, 35) or Color3.fromRGB(45, 45, 55)
+        local targetKnobPos = state and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
+
+        TweenService:Create(Switch, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+        TweenService:Create(Knob, TweenInfo.new(0.2), {Position = targetKnobPos}):Play()
+
+        callback(state)
+    end)
+end
+
+-- Slider Oluşturucu
+local function CreateLuxurySlider(tabName, titleText, minVal, maxVal, defaultVal, callback)
+    local parentTab = tabs[tabName]
+    if not parentTab then return end
+
+    local SliderCard = Instance.new("Frame")
+    SliderCard.Size = UDim2.new(1, -6, 0, 62)
+    SliderCard.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+    SliderCard.BorderSizePixel = 0
+    SliderCard.Parent = parentTab
+
+    local CardCorner = Instance.new("UICorner")
+    CardCorner.CornerRadius = UDim.new(0, 8)
+    CardCorner.Parent = SliderCard
+
+    local CardStroke = Instance.new("UIStroke")
+    CardStroke.Color = Color3.fromRGB(45, 45, 60)
+    CardStroke.Thickness = 1
+    CardStroke.Parent = SliderCard
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -20, 0, 20)
+    Label.Position = UDim2.new(0, 10, 0, 8)
+    Label.BackgroundTransparency = 1
+    Label.Text = titleText .. ": " .. tostring(defaultVal)
+    Label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 12
+    Label.Parent = SliderCard
+
+    local SliderBar = Instance.new("Frame")
+    SliderBar.Size = UDim2.new(1, -20, 0, 6)
+    SliderBar.Position = UDim2.new(0, 10, 0, 42)
+    SliderBar.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    SliderBar.BorderSizePixel = 0
+    SliderBar.Parent = SliderCard
+
+    local BarCorner = Instance.new("UICorner")
+    BarCorner.CornerRadius = UDim.new(1, 0)
+    BarCorner.Parent = SliderBar
+
+    local Fill = Instance.new("Frame")
+    Fill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+    Fill.BackgroundColor3 = Color3.fromRGB(200, 35, 35)
+    Fill.BorderSizePixel = 0
+    Fill.Parent = SliderBar
+
+    local FillCorner = Instance.new("UICorner")
+    FillCorner.CornerRadius = UDim.new(1, 0)
+    FillCorner.Parent = Fill
+
+    local DragButton = Instance.new("TextButton")
+    DragButton.Size = UDim2.new(1, 0, 1, 0)
+    DragButton.BackgroundTransparency = 1
+    DragButton.Text = ""
+    DragButton.Parent = SliderBar
+
+    local dragging = false
+    local function updateValue(input)
+        local pos = math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
+        local val = math.floor(minVal + (maxVal - minVal) * pos)
+        Fill.Size = UDim2.new(pos, 0, 1, 0)
+        Label.Text = titleText .. ": " .. tostring(val)
+        callback(val)
+    end
+
+    DragButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            updateValue(input)
+        end
+    end)
+
+    AddConnection(UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end))
+
+    AddConnection(UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateValue(input)
+        end
+    end))
+end
+
+-- Profil Sekmesini Doldurma
+local function BuildProfileTab()
+    local profileTab = tabs["Profile"]
+    if not profileTab then return end
+
+    local profileCard = Instance.new("Frame")
+    profileCard.Size = UDim2.new(1, -6, 0, 140)
+    profileCard.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+    profileCard.BorderSizePixel = 0
+    profileCard.Parent = profileTab
+
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 8)
+    cardCorner.Parent = profileCard
+
+    local cardStroke = Instance.new("UIStroke")
+    cardStroke.Color = Color3.fromRGB(45, 45, 60)
+    cardStroke.Thickness = 1
+    cardStroke.Parent = profileCard
+
+    local avatarImg = Instance.new("ImageLabel")
+    avatarImg.Size = UDim2.new(0, 90, 0, 90)
+    avatarImg.Position = UDim2.new(0, 15, 0, 15)
+    avatarImg.BackgroundColor3 = Color3.fromRGB(30, 32, 42)
+    avatarImg.BorderSizePixel = 0
+    avatarImg.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+    avatarImg.Parent = profileCard
+
+    local imgCorner = Instance.new("UICorner")
+    imgCorner.CornerRadius = UDim.new(1, 0)
+    imgCorner.Parent = avatarImg
+
+    local imgStroke = Instance.new("UIStroke")
+    imgStroke.Color = Color3.fromRGB(200, 35, 35)
+    imgStroke.Thickness = 1.5
+    imgStroke.Parent = avatarImg
+
+    local nameLbl = Instance.new("TextLabel")
+    nameLbl.Size = UDim2.new(1, -125, 0, 24)
+    nameLbl.Position = UDim2.new(0, 118, 0, 18)
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.Text = LocalPlayer.DisplayName
+    nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+    nameLbl.Font = Enum.Font.GothamBold
+    nameLbl.TextSize = 15
+    nameLbl.Parent = profileCard
+
+    local userLbl = Instance.new("TextLabel")
+    userLbl.Size = UDim2.new(1, -125, 0, 18)
+    userLbl.Position = UDim2.new(0, 118, 0, 44)
+    userLbl.BackgroundTransparency = 1
+    userLbl.Text = "@" .. LocalPlayer.Name
+    userLbl.TextColor3 = Color3.fromRGB(160, 160, 180)
+    userLbl.TextXAlignment = Enum.TextXAlignment.Left
+    userLbl.Font = Enum.Font.Gotham
+    userLbl.TextSize = 12
+    userLbl.Parent = profileCard
+
+    local idLbl = Instance.new("TextLabel")
+    idLbl.Size = UDim2.new(1, -125, 0, 18)
+    idLbl.Position = UDim2.new(0, 118, 0, 66)
+    idLbl.BackgroundTransparency = 1
+    idLbl.Text = "ID: " .. tostring(LocalPlayer.UserId)
+    idLbl.TextColor3 = Color3.fromRGB(200, 35, 35)
+    idLbl.TextXAlignment = Enum.TextXAlignment.Left
+    idLbl.Font = Enum.Font.GothamBold
+    idLbl.TextSize = 11
+    idLbl.Parent = profileCard
+
+    local statusInfoLbl = Instance.new("TextLabel")
+    statusInfoLbl.Size = UDim2.new(1, -30, 0, 20)
+    statusInfoLbl.Position = UDim2.new(0, 15, 0, 112)
+    statusInfoLbl.BackgroundTransparency = 1
+    statusInfoLbl.Text = "Pack Hub v3.0 - Whitelisted & Aktif"
+    statusInfoLbl.TextColor3 = Color3.fromRGB(100, 100, 120)
+    statusInfoLbl.TextXAlignment = Enum.TextXAlignment.Center
+    statusInfoLbl.Font = Enum.Font.Gotham
+    statusInfoLbl.TextSize = 10
+    statusInfoLbl.Parent = profileCard
+end
+
+-- Hedef Bulma
+local function getTargetAtMousePosition()
+    local mousePosition = Mouse.Hit.Position
+    local closestPlayer = nil
+    local closestDistance = 35
+
+    for _, target in ipairs(Players:GetPlayers()) do
+        if target ~= LocalPlayer and target.Character then
+            local root = target.Character:FindFirstChild("HumanoidRootPart")
+            local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
+
+            if root and humanoid and humanoid.Health > 0 then
+                local distance = (root.Position - mousePosition).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestPlayer = target
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- Karakter Rol İsmi Tespiti
+local function GetCharacterRoleName(player)
+    local char = player.Character
+    if char then
+        for _, child in ipairs(char:GetChildren()) do
+            if (child:IsA("StringValue") or child:IsA("ObjectValue")) and child.Value ~= "" then
+                if child.Name ~= "Humanoid" and child.Name ~= "Label" then
+                    return tostring(child.Value)
+                end
+            end
+        end
+        for _, desc in ipairs(char:GetDescendants()) do
+            if desc:IsA("TextLabel") and desc.Text ~= "" then
+                local txt = desc.Text
+                if txt ~= "Label" and txt ~= "Text" and not string.find(txt, "%%") and txt ~= player.Name then
+                    return txt
+                end
+            end
+        end
+    end
+    return player.DisplayName ~= "" and player.DisplayName or player.Name
+end
+
+-- ESP Rengini Belirleme
+local function GetESPColor(player)
+    local status = playerStatuses[player] or "None"
+    if status == "Enemy" then
+        return Color3.fromRGB(255, 50, 50)
+    elseif status == "Friend" then
+        return Color3.fromRGB(50, 150, 255)
+    else
+        return Color3.fromRGB(255, 255, 255)
+    end
+end
+
+-- ESP Sistemi
+local espConnections = {}
+
+local function AddCleanESP(player)
+    if player == LocalPlayer then return end
+
+    local function setupChar(char)
+        if not esp_Enabled then return end
+
+        local head = char:WaitForChild("Head", 5) or char.PrimaryPart
+        local root = char:WaitForChild("HumanoidRootPart", 5)
+        local hum = char:WaitForChild("Humanoid", 5)
+        if not head or not root or not hum then return end
+
+        local bb = Instance.new("BillboardGui")
+        bb.Name = player.Name .. "_CleanESP"
+        bb.Adornee = head
+        bb.Size = UDim2.new(0, 180, 0, 50)
+        bb.StudsOffset = Vector3.new(0, 3.2, 0)
+        bb.AlwaysOnTop = true
+        bb.Parent = EspFolder
+
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 0, 18)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = GetCharacterRoleName(player)
+        nameLabel.TextColor3 = GetESPColor(player)
+        nameLabel.TextStrokeTransparency = 0.2
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 13
+        nameLabel.Parent = bb
+
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, 0, 0, 14)
+        infoLabel.Position = UDim2.new(0, 0, 0, 16)
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        infoLabel.TextStrokeTransparency = 0.3
+        infoLabel.Font = Enum.Font.Gotham
+        infoLabel.TextSize = 11
+        infoLabel.Text = "@" .. player.Name
+        infoLabel.Parent = bb
+
+        local healthBg = Instance.new("Frame")
+        healthBg.Size = UDim2.new(0, 100, 0, 4)
+        healthBg.Position = UDim2.new(0.5, -50, 0, 33)
+        healthBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        healthBg.BorderSizePixel = 0
+        healthBg.Parent = bb
+
+        local bgCorner = Instance.new("UICorner")
+        bgCorner.CornerRadius = UDim.new(1, 0)
+        bgCorner.Parent = healthBg
+
+        local healthBar = Instance.new("Frame")
+        healthBar.Size = UDim2.new(1, 0, 1, 0)
+        healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+        healthBar.BorderSizePixel = 0
+        healthBar.Parent = healthBg
+
+        local barCorner = Instance.new("UICorner")
+        barCorner.CornerRadius = UDim.new(1, 0)
+        barCorner.Parent = healthBar
+
+        local function updateHealth()
+            if hum and hum.Parent then
+                local hpFactor = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                healthBar.Size = UDim2.new(hpFactor, 0, 1, 0)
+                
+                if hpFactor > 0.5 then
+                    healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+                elseif hpFactor > 0.25 then
+                    healthBar.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+                else
+                    healthBar.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                end
+            end
+        end
+
+        updateHealth()
+        local healthConn = hum.HealthChanged:Connect(updateHealth)
+        table.insert(espConnections, healthConn)
+        AddConnection(healthConn)
+
+        local renderConn
+        renderConn = RunService.RenderStepped:Connect(function()
+            if not (esp_Enabled and char and char.Parent and root and root.Parent) then
+                bb:Destroy()
+                if renderConn then renderConn:Disconnect() end
+            else
+                nameLabel.TextColor3 = GetESPColor(player)
+            end
+        end)
+        table.insert(espConnections, renderConn)
+        AddConnection(renderConn)
+    end
+
+    if player.Character then setupChar(player.Character) end
+    local charConn = player.CharacterAdded:Connect(setupChar)
+    table.insert(espConnections, charConn)
+    AddConnection(charConn)
+end
+
+local function RefreshESP()
+    EspFolder:ClearAllChildren()
+    for _, conn in pairs(espConnections) do
+        if conn then conn:Disconnect() end
+    end
+    espConnections = {}
+
+    if esp_Enabled then
+        for _, p in pairs(Players:GetPlayers()) do
+            AddCleanESP(p)
+        end
+    end
+end
+
+-- Seçim Menüsü Açma Fonksiyonu
+local activeDropdown = nil
+
+local function OpenStatusDropdown(player, buttonObj)
+    if activeDropdown then
+        activeDropdown:Destroy()
+        activeDropdown = nil
+    end
+
+    local dropdown = Instance.new("Frame")
+    dropdown.Name = "StatusDropdown"
+    dropdown.Size = UDim2.new(0, 115, 0, 95)
+    
+    local absPos = buttonObj.AbsolutePosition
+    local absSize = buttonObj.AbsoluteSize
+    dropdown.Position = UDim2.new(0, absPos.X - MainFrame.AbsolutePosition.X, 0, (absPos.Y - MainFrame.AbsolutePosition.Y) + absSize.Y + 4)
+    dropdown.BackgroundColor3 = Color3.fromRGB(16, 18, 25)
+    dropdown.BorderSizePixel = 0
+    dropdown.ZIndex = 10
+    dropdown.Parent = MainFrame
+
+    local dropCorner = Instance.new("UICorner")
+    dropCorner.CornerRadius = UDim.new(0, 6)
+    dropCorner.Parent = dropdown
+
+    local dropStroke = Instance.new("UIStroke")
+    dropStroke.Color = Color3.fromRGB(200, 35, 35)
+    dropStroke.Thickness = 1
+    dropStroke.Parent = dropdown
+
+    local dropLayout = Instance.new("UIListLayout")
+    dropLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    dropLayout.Padding = UDim.new(0, 4)
+    dropLayout.Parent = dropdown
+
+    local dropPadding = Instance.new("UIPadding")
+    dropPadding.PaddingTop = UDim.new(0, 4)
+    dropPadding.PaddingLeft = UDim.new(0, 4)
+    dropPadding.PaddingRight = UDim.new(0, 4)
+    dropPadding.PaddingBottom = UDim.new(0, 4)
+    dropPadding.Parent = dropdown
+
+    local options = {
+        {Name = "Enemy", Color = Color3.fromRGB(255, 60, 60)},
+        {Name = "Friend", Color = Color3.fromRGB(60, 160, 255)},
+        {Name = "None", Color = Color3.fromRGB(180, 180, 180)}
+    }
+
+    for _, opt in ipairs(options) do
+        local optBtn = Instance.new("TextButton")
+        optBtn.Size = UDim2.new(1, 0, 0, 25)
+        optBtn.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+        optBtn.BorderSizePixel = 0
+        optBtn.Text = opt.Name
+        optBtn.TextColor3 = opt.Color
+        optBtn.Font = Enum.Font.GothamBold
+        optBtn.TextSize = 11
+        optBtn.ZIndex = 11
+        optBtn.Parent = dropdown
+
+        local optCorner = Instance.new("UICorner")
+        optCorner.CornerRadius = UDim.new(0, 4)
+        optCorner.Parent = optBtn
+
+        optBtn.MouseButton1Click:Connect(function()
+            if opt.Name == "None" then
+                playerStatuses[player] = nil
+            else
+                playerStatuses[player] = opt.Name
+            end
+            
+            buttonObj.Text = opt.Name
+            buttonObj.TextColor3 = opt.Color
+            RefreshESP()
+
+            dropdown:Destroy()
+            activeDropdown = nil
+        end)
+    end
+
+    activeDropdown = dropdown
+end
+
+-- Dinamik Oyuncu Listesi (Players Sekmesi)
+local function RefreshPlayerList()
+    local playerTab = tabs["Players"]
+    if not playerTab then return end
+
+    if activeDropdown then
+        activeDropdown:Destroy()
+        activeDropdown = nil
+    end
+
+    for _, child in ipairs(playerTab:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local card = Instance.new("Frame")
+            card.Size = UDim2.new(1, -6, 0, 45)
+            card.BackgroundColor3 = Color3.fromRGB(20, 22, 30)
+            card.BorderSizePixel = 0
+            card.Parent = playerTab
+
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(0, 8)
+            corner.Parent = card
+
+            local stroke = Instance.new("UIStroke")
+            stroke.Color = Color3.fromRGB(45, 45, 60)
+            stroke.Thickness = 1
+            stroke.Parent = card
+
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1, -140, 1, 0)
+            lbl.Position = UDim2.new(0, 12, 0, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = p.Name
+            lbl.TextColor3 = Color3.fromRGB(240, 240, 240)
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Font = Enum.Font.GothamBold
+            lbl.TextSize = 12
+            lbl.Parent = card
+
+            local statusBtn = Instance.new("TextButton")
+            statusBtn.Size = UDim2.new(0, 115, 0, 28)
+            statusBtn.Position = UDim2.new(1, -125, 0.5, -14)
+            statusBtn.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
+            statusBtn.BorderSizePixel = 0
+            statusBtn.Font = Enum.Font.GothamBold
+            statusBtn.TextSize = 11
+            statusBtn.Parent = card
+
+            local btnCorner = Instance.new("UICorner")
+            btnCorner.CornerRadius = UDim.new(0, 6)
+            btnCorner.Parent = statusBtn
+
+            local currentStatus = playerStatuses[p] or "None"
+            statusBtn.Text = currentStatus
+            if currentStatus == "Enemy" then
+                statusBtn.TextColor3 = Color3.fromRGB(255, 60, 60)
+            elseif currentStatus == "Friend" then
+                statusBtn.TextColor3 = Color3.fromRGB(60, 160, 255)
+            else
+                statusBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+            end
+
+            statusBtn.MouseButton1Click:Connect(function()
+                OpenStatusDropdown(p, statusBtn)
+            end)
+        end
+    end
+end
+
+-- Oyuncu girip çıktığında listeyi güncelle
+AddConnection(Players.PlayerAdded:Connect(function(p)
+    if esp_Enabled then AddCleanESP(p) end
+    RefreshPlayerList()
+end))
+
+AddConnection(Players.PlayerRemoving:Connect(function(p)
+    playerStatuses[p] = nil
+    RefreshPlayerList()
+end))
+
+-- Tuş Dinleyicisi (B Tuşu HeartRip)
+AddConnection(UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    
+    if heartRipB_Enabled and input.KeyCode == Enum.KeyCode.B then
+        local target = getTargetAtMousePosition()
+        if target then
+            if EventB then
+                EventB:FireServer(target)
+            else
+                local foundEvent = ReplicatedStorage:FindFirstChild("HeartRip", true)
+                if foundEvent then foundEvent:FireServer(target) end
+            end
+        end
+    end
+end))
+
+-- Yakalanma Kontrolü (Anti-Grab)
+local function isBeingGrabbed()
+    local char = LocalPlayer.Character
+    if not char then return false end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+
+    for _, obj in ipairs(hrp:GetChildren()) do
+        if obj:IsA("Weld") or obj:IsA("WeldConstraint") or obj:IsA("Motor6D") then
+            local p0, p1 = obj.Part0, obj.Part1
+            if p0 and p1 then
+                local otherPart = (p0:IsDescendantOf(char) and p1) or (p1:IsDescendantOf(char) and p0)
+                if otherPart then
+                    local otherModel = otherPart:FindFirstAncestorOfClass("Model")
+                    if otherModel and otherModel ~= char then
+                        local otherPlayer = Players:GetPlayerFromCharacter(otherModel)
+                        if otherPlayer then return true end
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- Auto Punch Loops
+local cooldown1 = false
+AddConnection(RunService.Heartbeat:Connect(function()
+    if not autoPunch_Enabled then return end
+    if cooldown1 then return end
+    if isBeingGrabbed() then
+        if PunchEvent then
+            cooldown1 = true
+            pcall(function() PunchEvent:FireServer() end)
+            task.delay(0.35, function() cooldown1 = false end)
+        end
+    end
+end))
+
+local cooldown2 = false
+AddConnection(RunService.Heartbeat:Connect(function()
+    if not autoPunch2x_Enabled then return end
+    if cooldown2 then return end
+    if isBeingGrabbed() then
+        if PunchEvent then
+            cooldown2 = true
+            pcall(function()
+                PunchEvent:FireServer()
+                task.wait(0.1)
+                PunchEvent:FireServer()
+            end)
+            task.delay(0.5, function() cooldown2 = false end)
+        end
+    end
+end))
+
+-- Heart Rip Protect
+local ripCooldown = false
+local RIP_COOLDOWN_TIME = 1.8
+
+local function setupRipProtect(char)
+    if not char then return end
+    AddConnection(char.DescendantAdded:Connect(function(obj)
+        if not heartRipProtect_Enabled then return end
+        if ripCooldown then return end
+
+        if (obj:IsA("Sound") and obj.Name == "Hit2") or (obj:IsA("ParticleEmitter") and obj.Name == "HitSmoke") then
+            ripCooldown = true
+            pcall(function()
+                if PunchEvent then PunchEvent:FireServer() end
+            end)
+            task.delay(RIP_COOLDOWN_TIME, function() ripCooldown = false end)
+        end
+    end))
+end
+
+if LocalPlayer.Character then setupRipProtect(LocalPlayer.Character) end
+AddConnection(LocalPlayer.CharacterAdded:Connect(setupRipProtect))
+
+-- FOV Loop
+AddConnection(RunService.RenderStepped:Connect(function()
+    if fov_Enabled then
+        Camera.FieldOfView = customFovValue
+    end
+end))
+
+-- Sınırsız Stamina / Enerji Mantığı
+local ENERGY_VALUE = 9999
+
+local function forceEnergy()
+    if not infiniteEnergy_Enabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local maxEnergy = char:FindFirstChild("MaxEnergy")
+    if not maxEnergy then return end
+
+    local energy = maxEnergy:FindFirstChild("Energy")
+    if energy and (energy:IsA("NumberValue") or energy:IsA("IntValue")) then
+        if energy.Value < ENERGY_VALUE then
+            energy.Value = ENERGY_VALUE
+        end
+    end
+end
+
+AddConnection(RunService.Heartbeat:Connect(forceEnergy))
+
+local function setupCharacterEnergy(char)
+    task.wait(0.5)
+    if not infiniteEnergy_Enabled then return end
+    local maxEnergy = char:WaitForChild("MaxEnergy", 5)
+    if not maxEnergy then return end
+
+    local energy = maxEnergy:WaitForChild("Energy", 5)
+    if not energy then return end
+
+    AddConnection(energy:GetPropertyChangedSignal("Value"):Connect(function()
+        if infiniteEnergy_Enabled and energy.Value < ENERGY_VALUE then
+            energy.Value = ENERGY_VALUE
+        end
+    end))
+
+    energy.Value = ENERGY_VALUE
+end
+
+if LocalPlayer.Character then
+    setupCharacterEnergy(LocalPlayer.Character)
+end
+AddConnection(LocalPlayer.CharacterAdded:Connect(setupCharacterEnergy))
+
+-- SEKME İÇERİKLERİ
+CreateLuxuryToggle("Combat", "B - Heart Rip", "B tuşuna basınca en yakın hedefe vurur", false, function(active)
+    heartRipB_Enabled = active
+end)
+
+CreateLuxuryToggle("Combat", "Auto Punch", "Yakaladığında otomatik yumruk atar", false, function(active)
+    autoPunch_Enabled = active
+end)
+
+CreateLuxuryToggle("Combat", "Auto Punch 2x", "Yakaladığında seri 2 kez vurur", false, function(active)
+    autoPunch2x_Enabled = active
+end)
+
+CreateLuxuryToggle("Combat", "Heart Rip Protect", "Kalp sökme efektinde otomatik vurur", false, function(active)
+    heartRipProtect_Enabled = active
+end)
+
+CreateLuxuryToggle("Visuals", "Pack ESP", "Sürü üyelerini ve can barlarını gösterir", false, function(active)
+    esp_Enabled = active
+    RefreshESP()
+end)
+
+-- Sekmeleri Başlat
+RefreshPlayerList()
+BuildProfileTab()
+
+CreateLuxuryToggle("Settings", "Sınırsız Stamina", "Koşarken ve yetenek kullanırken enerjiyi sabit tutar", false, function(active)
+    infiniteEnergy_Enabled = active
+    if active and LocalPlayer.Character then
+        setupCharacterEnergy(LocalPlayer.Character)
+    end
+end)
+
+CreateLuxuryToggle("Settings", "Custom FOV", "Kamera görüş açısını (FOV) değiştirir", false, function(active)
+    fov_Enabled = active
+    if not active then Camera.FieldOfView = 70 end
+end)
+
+CreateLuxurySlider("Settings", "FOV Değeri", 50, 120, 90, function(val)
+    customFovValue = val
+end)
+
+-- Dragging & Keybind
+local dragging, dragInput, dragStart, startPos
+AddConnection(Topbar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end))
+
+AddConnection(Topbar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+end))
+
+AddConnection(UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end))
+
+AddConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.RightShift then
+        MainFrame.Visible = not MainFrame.Visible
+    end
+end))
